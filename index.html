@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Record Management System</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, sans-serif; background: #f2f4f8; color: #222; }
+  header { background: #12223f; color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 22px; }
+  nav a { color: #ffb347; margin-left: 18px; text-decoration: none; font-weight: bold; }
+  nav a:hover { text-decoration: underline; }
+  main { max-width: 1100px; margin: 20px auto; padding: 0 14px; }
+  section { background: #fff; border-radius: 6px; padding: 18px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  h2 { margin-top: 0; color: #12223f; border-bottom: 2px solid #ff8c1a; padding-bottom: 6px; }
+  .stats { display: flex; gap: 14px; flex-wrap: wrap; }
+  .card { flex: 1; min-width: 150px; background: #12223f; color: #fff; border-radius: 6px; padding: 14px; text-align: center; }
+  .card b { display: block; font-size: 26px; color: #ffb347; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  label { font-size: 13px; font-weight: bold; display: block; margin-bottom: 3px; }
+  input, select { width: 100%; padding: 8px; border: 1px solid #aab; border-radius: 4px; }
+  .err { color: #c0392b; font-size: 12px; min-height: 14px; }
+  button { background: #ff8c1a; color: #fff; border: 0; padding: 9px 18px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+  button.grey { background: #667; }
+  button.sm { padding: 4px 9px; margin: 0 2px; font-size: 12px; }
+  button.del { background: #c0392b; }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { background: #12223f; color: #fff; }
+  th, td { border: 1px solid #ccd; padding: 7px; text-align: left; }
+  tr:nth-child(even) { background: #f6f8fc; }
+  .fail { color: #c0392b; font-weight: bold; }
+  #msg { margin-top: 8px; font-weight: bold; }
+  footer { text-align: center; padding: 14px; font-size: 13px; color: #556; }
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } header { flex-direction: column; } nav a { margin: 0 8px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Student Record Management System</h1>
+  <nav><a href="#dashboard">Dashboard</a><a href="#add">Add Student</a><a href="#records">Records</a></nav>
+</header>
+<main>
+  <section id="dashboard">
+    <h2>Dashboard</h2>
+    <div class="stats">
+      <div class="card"><b id="sTotal">0</b>Total Students</div>
+      <div class="card"><b id="sAvg">0</b>Average %</div>
+      <div class="card"><b id="sTop">-</b>Topper</div>
+      <div class="card"><b id="sFail">0</b>Students Failed</div>
+    </div>
+  </section>
+
+  <section id="add">
+    <h2 id="formTitle">Add Student</h2>
+    <div class="grid">
+      <div><label>Roll No.</label><input id="roll" placeholder="e.g. 101"><div class="err" id="eroll"></div></div>
+      <div><label>Full Name</label><input id="name"><div class="err" id="ename"></div></div>
+      <div><label>Course</label>
+        <select id="course"><option>B.Tech CSE</option><option>B.Tech ECE</option><option>BCA</option><option>B.Sc IT</option></select></div>
+      <div><label>Semester</label>
+        <select id="sem"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+      <div><label>Email</label><input id="email" type="email"><div class="err" id="eemail"></div></div>
+      <div><label>Phone</label><input id="phone" maxlength="10"><div class="err" id="ephone"></div></div>
+      <div><label>Maths (0-100)</label><input id="m1" type="number"><div class="err" id="em1"></div></div>
+      <div><label>Programming (0-100)</label><input id="m2" type="number"><div class="err" id="em2"></div></div>
+      <div><label>Physics (0-100)</label><input id="m3" type="number"><div class="err" id="em3"></div></div>
+    </div>
+    <button onclick="saveStudent()">Save Student</button>
+    <button class="grey" onclick="resetForm()">Reset</button>
+    <div id="msg"></div>
+  </section>
+
+  <section id="records">
+    <h2>Student Records</h2>
+    <input id="search" placeholder="Search by name or roll number..." oninput="renderTable()" style="max-width:340px;margin-bottom:10px">
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Roll</th><th>Name</th><th>Course</th><th>Sem</th><th>Email</th><th>Phone</th><th>Total</th><th>%</th><th>Grade</th><th>Action</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<footer>Project Studio-I (CSD0111) | Mini Project: Student Record Management System</footer>
+
+<script>
+var students = [];
+var editIndex = -1;
+
+var seed = [
+ [101,"Aarav Sharma","B.Tech CSE",1,"aarav.sharma@mail.com","9876500101",88,92,81],
+ [102,"Priya Verma","B.Tech CSE",1,"priya.verma@mail.com","9876500102",76,84,72],
+ [103,"Rohit Kumar","B.Tech ECE",1,"rohit.kumar@mail.com","9876500103",65,58,61],
+ [104,"Sneha Gupta","BCA",1,"sneha.gupta@mail.com","9876500104",91,95,89],
+ [105,"Amit Singh","B.Tech CSE",1,"amit.singh@mail.com","9876500105",45,38,52],
+ [106,"Neha Yadav","B.Sc IT",1,"neha.yadav@mail.com","9876500106",72,69,77],
+ [107,"Vikas Mishra","B.Tech ECE",1,"vikas.mishra@mail.com","9876500107",55,62,48],
+ [108,"Pooja Patel","BCA",1,"pooja.patel@mail.com","9876500108",83,79,86],
+ [109,"Karan Mehta","B.Tech CSE",1,"karan.mehta@mail.com","9876500109",94,97,90],
+ [110,"Anjali Jha","B.Sc IT",1,"anjali.jha@mail.com","9876500110",67,74,70],
+ [111,"Deepak Rawat","B.Tech CSE",1,"deepak.rawat@mail.com","9876500111",58,51,63],
+ [112,"Kavya Nair","BCA",1,"kavya.nair@mail.com","9876500112",79,85,81],
+ [113,"Manish Tiwari","B.Tech ECE",1,"manish.tiwari@mail.com","9876500113",36,42,40],
+ [114,"Ritika Das","B.Tech CSE",1,"ritika.das@mail.com","9876500114",86,90,84],
+ [115,"Suraj Pandey","B.Sc IT",1,"suraj.pandey@mail.com","9876500115",62,57,66],
+ [116,"Divya Joshi","BCA",1,"divya.joshi@mail.com","9876500116",74,80,69],
+ [117,"Nitin Saxena","B.Tech ECE",1,"nitin.saxena@mail.com","9876500117",81,73,78],
+ [118,"Isha Kapoor","B.Tech CSE",1,"isha.kapoor@mail.com","9876500118",90,88,93],
+ [119,"Gaurav Chauhan","B.Sc IT",1,"gaurav.chauhan@mail.com","9876500119",53,60,49],
+ [120,"Shreya Banerjee","BCA",1,"shreya.banerjee@mail.com","9876500120",85,82,87]
+];
+
+function load() {
+  try { students = JSON.parse(localStorage.getItem("srms")) || []; } catch (e) { students = []; }
+  if (students.length === 0) {
+    for (var i = 0; i < seed.length; i++) {
+      var s = seed[i];
+      students.push({ roll: String(s[0]), name: s[1], course: s[2], sem: String(s[3]), email: s[4], phone: s[5], marks: [s[6], s[7], s[8]] });
+    }
+  }
+}
+function persist() { try { localStorage.setItem("srms", JSON.stringify(students)); } catch (e) {} }
+
+function calcTotal(st) { return st.marks[0] + st.marks[1] + st.marks[2]; }
+function calcPercent(st) { return calcTotal(st) / 3; }
+function calcGrade(p, marks) {
+  for (var i = 0; i < marks.length; i++) { if (marks[i] < 33) return "F"; }
+  if (p >= 90) return "A+";
+  if (p >= 80) return "A";
+  if (p >= 70) return "B";
+  if (p >= 60) return "C";
+  if (p >= 50) return "D";
+  return "F";
+}
+
+function setErr(id, text) { document.getElementById("e" + id).textContent = text; return text === ""; }
+
+function validateForm() {
+  var ok = true;
+  var roll = document.getElementById("roll").value.trim();
+  var name = document.getElementById("name").value.trim();
+  var email = document.getElementById("email").value.trim();
+  var phone = document.getElementById("phone").value.trim();
+
+  ok = setErr("roll", roll === "" ? "Roll number is required" : (/^\d+$/.test(roll) ? "" : "Digits only")) && ok;
+  if (ok && editIndex === -1) {
+    for (var i = 0; i < students.length; i++) {
+      if (students[i].roll === roll) { setErr("roll", "Roll number already exists"); ok = false; }
+    }
+  }
+  ok = setErr("name", /^[A-Za-z ]{3,}$/.test(name) ? "" : "Enter a valid name (letters only, min 3)") && ok;
+  ok = setErr("email", /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email) ? "" : "Enter a valid email") && ok;
+  ok = setErr("phone", /^[6-9]\d{9}$/.test(phone) ? "" : "Enter a valid 10-digit phone number") && ok;
+  for (var m = 1; m <= 3; m++) {
+    var v = document.getElementById("m" + m).value;
+    ok = setErr("m" + m, (v !== "" && v >= 0 && v <= 100) ? "" : "Enter marks between 0 and 100") && ok;
+  }
+  return ok;
+}
+
+function saveStudent() {
+  var msg = document.getElementById("msg");
+  if (!validateForm()) { msg.style.color = "#c0392b"; msg.textContent = "Please correct the errors above."; return; }
+  var st = {
+    roll: document.getElementById("roll").value.trim(),
+    name: document.getElementById("name").value.trim(),
+    course: document.getElementById("course").value,
+    sem: document.getElementById("sem").value,
+    email: document.getElementById("email").value.trim(),
+    phone: document.getElementById("phone").value.trim(),
+    marks: [Number(document.getElementById("m1").value), Number(document.getElementById("m2").value), Number(document.getElementById("m3").value)]
+  };
+  if (editIndex === -1) { students.push(st); msg.textContent = "Student added successfully."; }
+  else { students[editIndex] = st; msg.textContent = "Student record updated."; }
+  msg.style.color = "#1e8449";
+  persist(); resetForm(true); renderTable();
+}
+
+function resetForm(keepMsg) {
+  var ids = ["roll", "name", "email", "phone", "m1", "m2", "m3"];
+  for (var i = 0; i < ids.length; i++) { document.getElementById(ids[i]).value = ""; setErr(ids[i], ""); }
+  document.getElementById("roll").disabled = false;
+  document.getElementById("formTitle").textContent = "Add Student";
+  editIndex = -1;
+  if (keepMsg !== true) document.getElementById("msg").textContent = "";
+}
+
+function editStudent(i) {
+  var s = students[i];
+  editIndex = i;
+  document.getElementById("roll").value = s.roll; document.getElementById("roll").disabled = true;
+  document.getElementById("name").value = s.name;
+  document.getElementById("course").value = s.course;
+  document.getElementById("sem").value = s.sem;
+  document.getElementById("email").value = s.email;
+  document.getElementById("phone").value = s.phone;
+  document.getElementById("m1").value = s.marks[0];
+  document.getElementById("m2").value = s.marks[1];
+  document.getElementById("m3").value = s.marks[2];
+  document.getElementById("formTitle").textContent = "Edit Student (Roll " + s.roll + ")";
+  location.hash = "#add";
+}
+
+function deleteStudent(i) {
+  if (confirm("Delete record of " + students[i].name + "?")) {
+    students.splice(i, 1);
+    persist(); renderTable();
+  }
+}
+
+function renderTable() {
+  var q = document.getElementById("search").value.toLowerCase();
+  var html = "";
+  for (var i = 0; i < students.length; i++) {
+    var s = students[i];
+    if (q !== "" && s.name.toLowerCase().indexOf(q) === -1 && s.roll.indexOf(q) === -1) continue;
+    var p = calcPercent(s), g = calcGrade(p, s.marks);
+    html += "<tr><td>" + s.roll + "</td><td>" + s.name + "</td><td>" + s.course + "</td><td>" + s.sem +
+      "</td><td>" + s.email + "</td><td>" + s.phone + "</td><td>" + calcTotal(s) + "/300</td><td>" + p.toFixed(1) +
+      "</td><td" + (g === "F" ? ' class="fail"' : "") + ">" + g + "</td><td>" +
+      '<button class="sm" onclick="editStudent(' + i + ')">Edit</button>' +
+      '<button class="sm del" onclick="deleteStudent(' + i + ')">Delete</button></td></tr>';
+  }
+  document.getElementById("tbody").innerHTML = html || '<tr><td colspan="10">No records found.</td></tr>';
+  updateStats();
+}
+
+function updateStats() {
+  var sum = 0, fails = 0, top = null, topP = -1;
+  for (var i = 0; i < students.length; i++) {
+    var p = calcPercent(students[i]);
+    sum += p;
+    if (calcGrade(p, students[i].marks) === "F") fails++;
+    if (p > topP) { topP = p; top = students[i]; }
+  }
+  document.getElementById("sTotal").textContent = students.length;
+  document.getElementById("sAvg").textContent = students.length ? (sum / students.length).toFixed(1) : 0;
+  document.getElementById("sTop").textContent = top ? top.name.split(" ")[0] : "-";
+  document.getElementById("sFail").textContent = fails;
+}
+
+load();
+renderTable();
+</script>
+</body>
+</html>
